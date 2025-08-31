@@ -68,7 +68,7 @@ body {
   bottom: 20px;
   left: 20px;
   transition: opacity 0.8s cubic-bezier(0, 0.02, 0, 1);
-  font-size: clamp(20px, 3vw, 30px);
+  font-size: clamp(10px, 3vw, 25px);
   text-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
 }
 .carousel-item .num {
@@ -78,7 +78,7 @@ body {
   top: 10px;
   left: 20px;
   transition: opacity 0.8s cubic-bezier(0, 0.02, 0, 1);
-  font-size: clamp(20px, 10vw, 80px);
+  font-size: clamp(15px, 10vw, 60px);
 }
 .carousel-item img {
   width: 100%;
@@ -188,3 +188,5 @@ body {
   --size: 2px;
   transition-duration: 0.7s;
 }
+
+
