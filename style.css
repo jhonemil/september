@@ -1,0 +1,180 @@
+/* Enhanced CSS with improved transitions and responsive design */
+:root {
+    --primary-pink: #f48fb1;
+    --soft-pink: #fce4ec;
+    --cream-white: #fff8fb;
+    --text-color: #4a4a4a;
+    --breakpoint-mobile: 480px;
+    --breakpoint-tablet: 768px;
+}
+
+body {
+    margin: 0;
+    font-family: 'Raleway', sans-serif;
+    overflow-x: hidden;
+}
+
+.container {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--soft-pink) 0%, var(--primary-pink) 100%);
+    transition: background 1.5s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+a.btn {
+    display: inline-block;
+    padding: 0.3rem 1rem;
+    background-color: var(--primary-pink);
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background 0.3s ease;
+}
+
+a.btn:hover {
+    background-color: #ec407a; /* slightly darker pink */
+}
+
+.heart-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
+
+     @media (max-width: 480px) {
+        top: 25%;
+        transform: translateX(-50%) scale(0.9);
+    }
+}
+
+.heart {
+    cursor: pointer;
+    transition: transform 0.3s ease-in-out;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+    min-width: 44px;
+    min-height: 44px;
+    touch-action: manipulation;
+    
+    img {
+        width: clamp(64px, 10vw, 80px);
+    }
+}
+
+.heart img {
+    width: 80px;
+    height: auto;
+    transition: transform 0.3s ease;
+}
+
+.message {
+    position: absolute;
+    width: 85%;
+    margin: 0 1rem;
+    max-width: 600px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    padding: 1rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+    transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    will-change: transform, opacity;
+
+     /* Fluid spacing using clamp() */
+    padding: clamp(1.25rem, 5vw, 2rem);
+    margin-inline: clamp(0.5rem, 3vw, 2rem);
+
+    @media (min-width: 768px) {
+        padding: 2.5rem;
+        margin: 0 auto;
+    }
+}
+
+.message.active {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+h1 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 500;
+    color: var(--text-color);
+    margin: 0 0 1.5rem;
+    font-size: 2.25rem;
+    text-align: center;
+    font-size: clamp(1.75rem, 6vw, 2.25rem);
+    margin-bottom: clamp(1rem, 3vw, 1.5rem);
+}
+
+p {
+    color: var(--text-color);
+    line-height: 1.7;
+ font-size: clamp(1rem, 4vw, 1.125rem);
+     margin: 0 0 1.5rem;
+    text-align: justify;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+}
+
+@keyframes subtleFloat {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(-8px) rotate(2deg); }
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
+@media (max-width: 768px) {
+    .message {
+        width: 90%;
+        padding: 1rem;
+    }
+     .message.active{
+        padding: 1.2rem; /* Reduced padding when active for better fit */
+    }
+    
+    h1 {
+        font-size: 1.875rem;
+    }
+    
+    p {
+        font-size: 1.05rem;
+        line-height: 1.6;
+    }
+}
+@media (max-width: 480px) {
+    .heart img {
+        width: 64px;
+    }
+
+    .message {
+        padding: 1.5rem 1.25rem; /* Increased vertical padding and balanced horizontal */
+        margin:  1rem; /* Keeps margin consistent */
+    }
+    .message.active{
+        padding: .5rem .2rem; /* Reduced padding when active for better fit */
+    }
+
+    h1 {
+        font-size: 1.5rem;
+        margin: 1rem;
+    }
+
+    p {
+        font-size: 0.95rem;
+        line-height: 1.65;
+        padding: 2rem;
+    }
+}
