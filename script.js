@@ -1,10 +1,10 @@
-// Enhanced JavaScript with smoother animations
 $(document).ready(function() {
     let isOpen = false;
     const $heartContainer = $('.heart-container');
     const $message = $('.message');
     const $container = $('.container');
 
+    // Bind click events immediately so the heart is always clickable
     $heartContainer.on('click', function() {
         if (!isOpen) {
             $heartContainer.css({
@@ -26,9 +26,24 @@ $(document).ready(function() {
         isOpen = !isOpen;
     });
 
-    // Enhanced hover effect with CSS transition
     $heartContainer.hover(
         () => $heartContainer.find('.heart').css('transform', 'scale(1.1)'),
         () => $heartContainer.find('.heart').css('transform', 'scale(1)')
     );
+
+    // Fetch the dynamic message from Supabase in the background
+    async function getMessage() {
+        try {
+            const { data, error } = await supabaseClient.from('letter_content').select('message').limit(1).single();
+            if (data && data.message) {
+                $('#message-body').text(data.message);
+            } else {
+                $('#message-body').text("Couldn't read message. Make sure Database is set up.");
+            }
+        } catch(err) {
+            console.error(err);
+        }
+    }
+    
+    getMessage();
 });

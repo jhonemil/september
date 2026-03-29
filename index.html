@@ -4,30 +4,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>corn site</title>
+    <title>Love Letter</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=Raleway:wght@300;400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="db.js"></script>
 </head>
 <body>
     <div class="container">
         <div class="heart-container">
             <div class="heart">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/4/42/Love_Heart_SVG.svg" alt="Heart Icon">
+                <svg viewBox="0 0 32 29.6" width="80" height="auto" fill="#e91e63">
+                  <path d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2c6.1-9.3,16-12.1,16-21.2C32,3.8,28.2,0,23.6,0z"/>
+                </svg>
             </div>
         </div>
      <article class="message">
     <header>
-        <h1 style="text-align: start;">Hi, Leng</h1>
-        <div class="content">
+        <h1 style="text-align: start;" id="message-title">Hi, Leng</h1>
     </header>
-    <p>
-       September na, baby!! I can’t believe na effective pa rin ‘yong gayuma ko 🤣. Look naman kasi, I’m still into you 🫶. Grabe, ang bilis ng time no? Kaylan lang, super busy ka mag-review for your P1 exams. And now, parang hindi ka pa nga nakakapagpahinga, nandiyan pa ‘yong thesis n’yo na kailangan niyo na ring tapusin. Tapos need mo na namang mag-review ulit for your P2 exams 🤧. But I know you can do it, baby. Good luck always😘  I pray for you, and I’m always proud of you🫶. Thank you for being my constant kahit super stressful and hectic ng days mo, also, baby,  thank you for still holding the rope (I’ll always be your saranggola). Don’t worry, okay? Hindi ka po nagkukulang ng time. I’m so happy na ikaw ‘yong kasama ko through everything 🫶. I swear, kahit gaano ka-busy, you always make me feel loved and secure. By the glory of God, baby, let’s start this month together. I hope we can make ulit ng another set of good core memories this September.
-
-    </p>
-    <p style="text-align: end; margin-top: 2rem;">
-        <a href="pic.html" class="btn">Your, saranggola ❤️</a>
-    </p>
+    <div class="content">
+        <p id="message-body">
+            Loading your sweet message...
+        </p>
+        <p style="text-align: end; margin-top: 2rem;">
+            <a href="pic.html" class="btn">Things to remember</a>
+        </p>
     </div>
 </article>
 
