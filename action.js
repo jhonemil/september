@@ -116,6 +116,14 @@ async function loadCarousel() {
     document.addEventListener('touchstart', handleMouseDown);
     document.addEventListener('touchmove', handleMouseMove);
     document.addEventListener('touchend', handleMouseUp);
+    
+    // Auto-slide every 2 seconds
+    setInterval(() => {
+        if (!isDown) {
+            progress += 1;
+            animate();
+        }
+    }, 2000);
 }
 
 // Boot the dynamic loader
