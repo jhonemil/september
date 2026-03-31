@@ -1,12 +1,29 @@
 body {
+  margin: 0;
   overflow: hidden;
-  font-family: "Roboto", serif;
-  background: linear-gradient(135deg, pink,  #f48fb1);
+  font-family: "Raleway", sans-serif;
+  background: url('romantic_bg.png') no-repeat center center fixed;
+  background-size: cover;
+  min-height: 100vh;
+}
+
+/* Glassmorphism subtle overlay for more premium feel */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 192, 203, 0.05); /* very subtle pink tint */
+  backdrop-filter: blur(3px);
+  z-index: 0;
+  pointer-events: none;
 }
 
 .carousel {
   position: relative;
-  z-index: 1;
+  z-index: 1; /* ensure carousel is above background overlay */
   height: 100vh;
   overflow: hidden;
   pointer-events: none;
