@@ -5,6 +5,7 @@ const speedWheel = 0.002;
 const speedDrag = -0.01;
 
 async function loadCarousel() {
+    logActivity('Page Visit', 'Carousel Page');
     try {
         const { data: musicData } = await supabaseClient.from('bg_music').select('music_url').limit(1).single();
         if (musicData && musicData.music_url) {

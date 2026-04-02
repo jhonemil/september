@@ -1,4 +1,5 @@
 $(document).ready(function() {
+    logActivity('Site Visit', 'Home Page');
     let isOpen = false;
     const $heartContainer = $('.heart-container');
     const $message = $('.message');
@@ -24,6 +25,10 @@ $(document).ready(function() {
             $heartContainer.find('.heart').css('animation', '');
         }
         isOpen = !isOpen;
+    });
+
+    $('.btn').on('click', function() {
+        logActivity('Button Click', 'Things to Remember');
     });
 
     $heartContainer.hover(
