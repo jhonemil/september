@@ -15,17 +15,31 @@
     <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
 </div>
 
-<div class="carousel">
-    <!-- Items are generated dynamically by action.js -->
+<div class="gallery-wrapper layout-circular" id="gallery-wrapper">
+    <div class="carousel">
+        <!-- Items are generated dynamically by action.js -->
+    </div>
+</div>
+
+<!-- Floating Controls Panel -->
+<div class="controls-panel">
+    <div id="autoplay-control" class="control-btn pulse" title="Auto Play">
+        <span class="control-icon">▶️</span>
+    </div>
+    <div id="music-control" class="control-btn pulse" title="Play Music">
+        <span class="control-icon">🎵</span>
+    </div>
 </div>
 
 <div class="cursor"></div>
 <div class="cursor cursor2"></div>
 
-<audio id="bg-music" autoplay loop>
+<audio id="bg-music" loop>
 </audio>
 
+
 <script src="action.js"></script>
+
 
 </body>
 </html>

@@ -2,10 +2,18 @@ body {
   margin: 0;
   overflow: hidden;
   font-family: "Raleway", sans-serif;
-  background: url('romantic_bg.png') no-repeat center center fixed;
-  background-size: cover;
+  background: linear-gradient(-45deg, #ffafbd, #ffc3a0, #ff9a9e, #fecfef);
+  background-size: 400% 400%;
+  animation: gradientBG 12s ease-in-out infinite;
   min-height: 100vh;
 }
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 
 /* Glassmorphism subtle overlay for more premium feel */
 body::before {
@@ -154,3 +162,142 @@ body::before {
   --size: 2px;
   transition-duration: 0.7s;
 }
+
+/* Polaroid Stack Layout Overrides */
+.layout-polaroid-stack .carousel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  perspective: 1000px;
+}
+
+.layout-polaroid-stack .carousel-item {
+  --width: clamp(280px, 75vw, 340px);
+  --height: clamp(360px, 90vw, 440px);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--width);
+  height: var(--height);
+  margin-top: calc(var(--height) * -0.5);
+  margin-left: calc(var(--width) * -0.5);
+  transform-origin: center center;
+  background: #ffffff; /* Solid polaroid white */
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  border-radius: 4px; /* Classic polaroid sharp-yet-soft corners */
+  padding: 12px 12px 60px 12px; /* Polaroid frame: bottom area is wider for captions */
+  box-sizing: border-box;
+  transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s, box-shadow 0.3s;
+}
+
+/* Force image box to be relative and occupy the remaining padded space */
+.layout-polaroid-stack .carousel-box {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 1 !important; /* Force visible */
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+/* Disable dark gradient overlay for polaroid layout */
+.layout-polaroid-stack .carousel-box:before {
+  display: none !important;
+}
+
+.layout-polaroid-stack .carousel-item img {
+  border-radius: 0px; /* Polaroid photos are square/rectangular with straight edges */
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.layout-polaroid-stack .carousel-item .card-caption {
+  position: absolute;
+  bottom: 15px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  color: #333333; /* Soft dark grey for handwritten ink vibe */
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+
+/* Floating Control Panel Styles */
+.controls-panel {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  display: flex;
+  gap: 15px;
+  z-index: 1000;
+}
+
+.control-btn {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: 0 8px 32px rgba(233, 30, 99, 0.15);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s, border-color 0.3s;
+}
+
+.control-btn:hover {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+.control-icon {
+  font-size: 22px;
+}
+
+/* Pulsing effect when waiting/prompting actions */
+.control-btn.pulse {
+  animation: pulse-control 2s infinite;
+}
+
+@keyframes pulse-control {
+  0% {
+    box-shadow: 0 0 0 0 rgba(233, 30, 99, 0.5);
+    transform: scale(1);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(233, 30, 99, 0);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(233, 30, 99, 0);
+    transform: scale(1);
+  }
+}
+
+/* Active states */
+.control-btn.active-state {
+  background: rgba(255, 192, 203, 0.6);
+  border-color: rgba(233, 30, 99, 0.4);
+  box-shadow: 0 8px 32px rgba(233, 30, 99, 0.25);
+}
+
+.control-btn.active-state .control-icon {
+  animation: pulse-icon 1s infinite alternate;
+}
+
+@keyframes pulse-icon {
+  from { transform: scale(1); }
+  to { transform: scale(1.15); }
+}
+
