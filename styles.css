@@ -300,4 +300,184 @@ body::before {
   from { transform: scale(1); }
   to { transform: scale(1.15); }
 }
+
+/* Option 2: Horizontal Parallax Filmstrip Styles (Native Scroll Version) */
+.layout-filmstrip .carousel {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  overflow-x: hidden !important; /* Disable free scrolling */
+  scroll-snap-type: none !important; /* Disable native snap */
+  width: 100vw !important;
+  height: 100vh !important;
+  box-sizing: border-box !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  pointer-events: auto !important;
+}
+
+.layout-filmstrip .carousel::-webkit-scrollbar {
+  display: none !important; /* Hide scrollbar Chrome/Safari */
+}
+
+.layout-filmstrip .filmstrip-track {
+  display: flex !important;
+  gap: 30px !important;
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%);
+  transform-origin: center center !important;
+  will-change: transform;
+}
+
+.layout-filmstrip .carousel-item {
+  --width: clamp(260px, 65vw, 300px);
+  --height: clamp(340px, 85vw, 400px);
+  width: var(--width) !important;
+  height: var(--height) !important;
+  position: relative !important;
+  flex-shrink: 0 !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15) !important;
+  scroll-snap-align: center !important;
+  transform-origin: center center !important;
+  opacity: 0.5;
+  transform: scale(0.9) !important;
+  transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1) !important;
+  margin: 0 !important;
+  top: auto !important;
+  left: auto !important;
+}
+
+.layout-filmstrip .carousel-item.active-card {
+  opacity: 1 !important;
+  transform: scale(1.05) !important;
+  box-shadow: 0 20px 45px rgba(233, 30, 99, 0.2) !important;
+}
+
+.layout-filmstrip .carousel-box {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  opacity: 1 !important; /* Force visible */
+}
+
+/* Make image slightly larger than container so it has space to shift for parallax */
+.layout-filmstrip .carousel-item img {
+  width: 115% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  position: absolute !important;
+  left: -7.5% !important;
+  top: 0 !important;
+  will-change: transform;
+  transition: transform 0.15s ease-out !important; /* Smooth parallax transition */
+}
+
+.layout-filmstrip .carousel-item .card-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 30px 15px 15px 15px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 100%);
+  color: #ffffff;
+  font-family: 'Raleway', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-align: center;
+  box-sizing: border-box;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.layout-filmstrip .carousel-item.active-card .card-caption {
+  opacity: 1;
+}
+
+/* Floating Date Display style */
+.active-date-display {
+  position: fixed;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  color: #e91e63;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-shadow: 1px 1px 10px rgba(255, 255, 255, 0.9);
+  opacity: 0;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  z-index: 10;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 10px 28px;
+  border-radius: 30px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 30px rgba(233, 30, 99, 0.1);
+}
+
+.active-date-display.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Pull to Refresh Indicator */
+.pull-indicator {
+  position: fixed;
+  top: -80px; /* Hidden offscreen by default */
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 10px 24px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 10px 30px rgba(233, 30, 99, 0.15);
+  z-index: 2000; /* Must overlay everything */
+  transition: top 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.2s ease;
+  font-family: 'Raleway', sans-serif;
+  font-size: 0.9rem;
+  color: #e91e63;
+  font-weight: 600;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.pull-icon {
+  font-size: 1.4rem;
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+.pull-indicator.refreshing .pull-icon {
+  animation: rotate-spinner 0.8s linear infinite;
+}
+
+@keyframes rotate-spinner {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+
+
 

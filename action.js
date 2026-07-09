@@ -34,9 +34,12 @@ async function loadCarousel() {
         if (data && data.length > 0) {
             allImages = data;
             
-            // Read the initial layout selection from database
+            // Prefetch the first 25 images immediately to prevent initial scroll lag
+            prefetchImages(0, 25);
+            
+            // Read the initial layout selection from database (Forced to 2 for now)
             const activeLayout = await getActiveLayout();
-            switchLayout(activeLayout);
+            switchLayout(2);
 
             // Listen to real-time database changes
             subscribeToLayoutChange((newLayoutId) => {
@@ -55,7 +58,7 @@ function createCardElement(imgData) {
     item.className = 'carousel-item';
     item.innerHTML = `
         <div class="carousel-box">
-            <img src="${imgData.image_url}" loading="lazy" />
+            <img src="${imgData.image_url}" />
         </div>
         <div class="card-caption">${imgData.caption || ''}</div>
     `;
@@ -78,6 +81,10 @@ function switchLayout(layoutId) {
         // Option 1: Polaroid Card Stack (Virtualized)
         wrapper.className = 'gallery-wrapper layout-polaroid-stack';
         cleanupPreviousLayout = initPolaroidLayout();
+    } else if (layoutId === 2) {
+        // Option 2: Horizontal Parallax Filmstrip (Virtualized One-by-One Swipe)
+        wrapper.className = 'gallery-wrapper layout-filmstrip';
+        cleanupPreviousLayout = initFilmstripLayout();
     } else {
         // Fallback to original circular layout (Slice to top 15 images to prevent crashing browser)
         wrapper.className = 'gallery-wrapper layout-circular';
@@ -92,12 +99,20 @@ function switchLayout(layoutId) {
     }
 }
 
-// Global hook to trigger automated swiping from outside the layout logic
+// Prefetch images to browser cache in the background
+function prefetchImages(startIndex, count = 25) {
+    if (!allImages || allImages.length === 0) return;
+    for (let i = 0; i < count; i++) {
+        const idx = (startIndex + i) % allImages.length;
+        const img = new Image();
+        img.src = allImages[idx].image_url;
+    }
+}
+
+// Global hook to trigger automated swiping from scroll triggers
 function triggerAutoSwipe() {
-    if (currentLayoutId === 1) {
-        if (typeof window.polaroidSwipeNext === 'function') {
-            window.polaroidSwipeNext();
-        }
+    if (typeof window.polaroidSwipeNext === 'function') {
+        window.polaroidSwipeNext();
     }
 }
 
@@ -262,6 +277,187 @@ function initPolaroidLayout() {
         document.removeEventListener('touchstart', onStart);
         document.removeEventListener('touchmove', onMove);
         document.removeEventListener('touchend', onEnd);
+    };
+}
+
+// ----------------------------------------------------
+// Option 2: Horizontal Parallax Filmstrip (Native Scroll snap version with Desktop Mouse Drag)
+// ----------------------------------------------------
+function initFilmstripLayout() {
+    const container = document.querySelector('.carousel');
+    const dateDisplay = document.getElementById('active-date-display');
+    
+    // Create track element
+    const track = document.createElement('div');
+    track.className = 'filmstrip-track';
+    container.appendChild(track);
+
+    let activeIndex = 0;
+    let cardElements = [];
+    const cardWidth = 280; // Defined in CSS
+    const gap = 30; // Defined in CSS
+
+    let isDragging = false;
+    let startX = 0;
+    let currentDragX = 0;
+
+    // Render 5 virtualized cards centered around activeIndex
+    function updateFilmstripDOM() {
+        track.innerHTML = '';
+        cardElements = [];
+
+        const range = 2; // Render 2 cards before and 2 after
+        for (let i = -range; i <= range; i++) {
+            const indexOffset = activeIndex + i;
+            const imgIndex = ((indexOffset % allImages.length) + allImages.length) % allImages.length;
+            const card = createCardElement(allImages[imgIndex]);
+            
+            if (i === 0) {
+                card.classList.add('active-card');
+            }
+            
+            track.appendChild(card);
+            cardElements.push({ element: card, offset: i });
+        }
+
+        // Reset track position to center
+        track.style.transform = `translate(calc(-50% + ${currentDragX}px), -50%)`;
+        
+        // Update floating date
+        const currentImg = allImages[activeIndex];
+        if (currentImg && currentImg.created_at) {
+            const date = new Date(currentImg.created_at);
+            dateDisplay.textContent = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            dateDisplay.classList.add('visible');
+        } else {
+            dateDisplay.classList.remove('visible');
+        }
+        
+        updateParallaxOffsets();
+        // Prefetch next 8 images
+        prefetchImages(activeIndex, 8);
+    }
+
+    // Parallax update
+    function updateParallaxOffsets() {
+        cardElements.forEach(item => {
+            const rect = item.element.getBoundingClientRect();
+            const screenCenterX = window.innerWidth / 2;
+            const cardCenterX = rect.left + rect.width / 2;
+            const parallaxOffset = (cardCenterX - screenCenterX) * -0.15;
+            const img = item.element.querySelector('img');
+            if (img) {
+                img.style.transform = `translateX(${parallaxOffset}px) scale(1.15)`;
+            }
+        });
+    }
+
+    // Programmatic auto-swipe
+    window.polaroidSwipeNext = function() {
+        track.style.transition = 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
+        const shiftX = -(cardWidth + gap);
+        track.style.transform = `translate(calc(-50% + ${shiftX}px), -50%)`;
+
+        setTimeout(() => {
+            track.style.transition = 'none';
+            activeIndex = (activeIndex + 1) % allImages.length;
+            updateFilmstripDOM();
+        }, 500);
+    };
+
+    updateFilmstripDOM();
+
+    // Drag events
+    function onStart(e) {
+        isDragging = true;
+        const touch = e.touches ? e.touches[0] : e;
+        startX = touch.clientX;
+        track.style.transition = 'none';
+    }
+
+    function onMove(e) {
+        if (!isDragging) return;
+        const touch = e.touches ? e.touches[0] : e;
+        currentDragX = touch.clientX - startX;
+
+        // Apply drag translation to track
+        track.style.transform = `translate(calc(-50% + ${currentDragX}px), -50%)`;
+        updateParallaxOffsets();
+    }
+
+    function onEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+
+        track.style.transition = 'transform 0.45s cubic-bezier(0.25, 1, 0.5, 1)';
+        
+        const swipeThreshold = 80;
+        if (currentDragX < -swipeThreshold) {
+            // Swipe Left -> Go Next Card
+            const shiftX = -(cardWidth + gap);
+            track.style.transform = `translate(calc(-50% + ${shiftX}px), -50%)`;
+
+            if (isAutoplayActive) {
+                clearInterval(autoplayInterval);
+                autoplayInterval = setInterval(() => {
+                    triggerAutoSwipe();
+                }, 3000);
+            }
+
+            setTimeout(() => {
+                track.style.transition = 'none';
+                activeIndex = (activeIndex + 1) % allImages.length;
+                currentDragX = 0;
+                updateFilmstripDOM();
+            }, 400);
+        } else if (currentDragX > swipeThreshold) {
+            // Swipe Right -> Go Previous Card
+            const shiftX = (cardWidth + gap);
+            track.style.transform = `translate(calc(-50% + ${shiftX}px), -50%)`;
+
+            if (isAutoplayActive) {
+                clearInterval(autoplayInterval);
+                autoplayInterval = setInterval(() => {
+                    triggerAutoSwipe();
+                }, 3000);
+            }
+
+            setTimeout(() => {
+                track.style.transition = 'none';
+                activeIndex = ((activeIndex - 1 % allImages.length) + allImages.length) % allImages.length;
+                currentDragX = 0;
+                updateFilmstripDOM();
+            }, 400);
+        } else {
+            // Snap back
+            track.style.transform = 'translate(-50%, -50%)';
+            currentDragX = 0;
+            setTimeout(() => {
+                updateParallaxOffsets();
+            }, 400);
+        }
+    }
+
+    // Bind event listeners
+    document.addEventListener('mousedown', onStart);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('touchmove', onMove, { passive: true });
+    document.addEventListener('touchend', onEnd);
+
+    return () => {
+        window.polaroidSwipeNext = null;
+        document.removeEventListener('mousedown', onStart);
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onEnd);
+        document.removeEventListener('touchstart', onStart);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
+        if (dateDisplay) {
+            dateDisplay.classList.remove('visible');
+            dateDisplay.innerHTML = '';
+        }
     };
 }
 
@@ -437,6 +633,81 @@ document.addEventListener('mousemove', (e) => {
         cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
     });
 });
+
+// ----------------------------------------------------
+// Pull to Refresh Gesture Implementation
+// ----------------------------------------------------
+let pullStartY = 0;
+let pullMoveY = 0;
+let isPulling = false;
+const pullIndicator = document.getElementById('pull-to-refresh');
+const pullIcon = pullIndicator ? pullIndicator.querySelector('.pull-icon') : null;
+const pullText = document.getElementById('pull-text');
+
+function handlePullStart(e) {
+    // Only allow pulling if we are at the top of the viewport
+    const touch = e.touches ? e.touches[0] : e;
+    if (touch.clientY < 100 && !isDragging) {
+        pullStartY = touch.clientY;
+        isPulling = true;
+    }
+}
+
+function handlePullMove(e) {
+    if (!isPulling) return;
+    const touch = e.touches ? e.touches[0] : e;
+    pullMoveY = touch.clientY - pullStartY;
+
+    if (pullMoveY > 0) {
+        // Prevent default viewport panning while pulling
+        if (e.cancelable) e.preventDefault();
+        
+        // Add elastic drag resistance
+        const dragDist = Math.min(pullMoveY * 0.4, 80);
+        if (pullIndicator) {
+            pullIndicator.style.top = `${dragDist - 80}px`;
+
+            if (pullMoveY > 150) {
+                if (pullIcon) pullIcon.style.transform = 'rotate(180deg)';
+                if (pullText) pullText.textContent = 'Release to refresh...';
+            } else {
+                if (pullIcon) pullIcon.style.transform = 'rotate(0deg)';
+                if (pullText) pullText.textContent = 'Pull to refresh...';
+            }
+        }
+    }
+}
+
+function handlePullEnd() {
+    if (!isPulling) return;
+    isPulling = false;
+
+    if (pullMoveY > 150) {
+        if (pullIndicator) {
+            pullIndicator.style.top = '25px';
+            pullIndicator.classList.add('refreshing');
+            if (pullIcon) {
+                pullIcon.style.transform = 'none';
+                pullIcon.textContent = '🔄';
+            }
+            if (pullText) pullText.textContent = 'Refreshing...';
+        }
+        
+        setTimeout(() => {
+            window.location.reload();
+        }, 600);
+    } else {
+        if (pullIndicator) {
+            pullIndicator.style.top = '-80px';
+        }
+    }
+    pullMoveY = 0;
+}
+
+// Bind pull-to-refresh events
+document.addEventListener('touchstart', handlePullStart, { passive: false });
+document.addEventListener('touchmove', handlePullMove, { passive: false });
+document.addEventListener('touchend', handlePullEnd);
 
 // Boot the dynamic loader
 loadCarousel();
