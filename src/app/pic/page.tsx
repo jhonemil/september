@@ -1,14 +1,16 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { supabaseClient, getActiveLayout, subscribeToLayoutChange, logActivity } from '@/lib/supabase';
+import React, { useEffect, useState, useRef } from 'react';
+import { supabaseClient, subscribeToLayoutChange } from '@/lib/supabase';
+import { fetchBgMusic, fetchCarouselImages, fetchActiveLayout, saveActivityLog } from '@/app/actions';
 
 interface CarouselImage {
   id: string | number;
   image_url: string;
   caption?: string;
   created_at?: string;
-  sort_order?: number;
+  sort_order?: number | null;
 }
 
 export default function PicPage() {
@@ -32,45 +34,45 @@ export default function PicPage() {
   const cursor2Ref = useRef<HTMLDivElement | null>(null);
   const autoplayIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch images, config, layout on mount
-  const loadData = useCallback(async () => {
-    logActivity('Page Visit', 'Carousel Page');
+  const loadData = async () => {
+    // Log visit
+    saveActivityLog('Page Visit', 'Carousel Page').catch(err => {
+      console.error("saveActivityLog 'Page Visit' failed:", err);
+    });
 
     // Fetch Music
     try {
-      const { data: musicData } = await supabaseClient
-        .from('bg_music')
-        .select('music_url')
-        .limit(1)
-        .single();
-      if (musicData && musicData.music_url) {
-        setMusicUrl(musicData.music_url);
+      const music = await fetchBgMusic();
+      if (music) {
+        setMusicUrl(music);
       }
     } catch (err) {
-      console.error("Music database error:", err);
+      console.error("Error fetching background music:", err);
     }
 
     // Fetch Images
     try {
-      const { data, error } = await supabaseClient
-        .from('carousel_images')
-        .select('*')
-        .order('sort_order', { ascending: true });
-
-      if (data && data.length > 0) {
-        setAllImages(data);
-        
-        // Fetch active layout settings
-        const initialLayout = await getActiveLayout();
-        setActiveLayoutState(initialLayout);
+      const imagesData = await fetchCarouselImages();
+      if (imagesData && imagesData.length > 0) {
+        setAllImages(imagesData);
       }
     } catch (err) {
-      console.error("Database error loading images:", err);
+      console.error("Error fetching carousel images:", err);
     }
-  }, []);
+
+    // Fetch active layout settings
+    try {
+      const initialLayout = await fetchActiveLayout();
+      setActiveLayoutState(initialLayout);
+    } catch (err) {
+      console.error("Error fetching active layout:", err);
+    }
+  };
 
   useEffect(() => {
-    loadData();
+    const timer = setTimeout(() => {
+      loadData();
+    }, 0);
 
     // Listen to real-time database changes
     const channel = subscribeToLayoutChange((newLayoutId) => {
@@ -90,6 +92,7 @@ export default function PicPage() {
     window.addEventListener('mousemove', handleMouseMove);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('mousemove', handleMouseMove);
       if (channel) supabaseClient.removeChannel(channel);
       if (autoplayIntervalRef.current) clearInterval(autoplayIntervalRef.current);
@@ -105,6 +108,7 @@ export default function PicPage() {
         audioRef.current.play().catch(e => console.log("Audio play blocked by browser:", e));
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [musicUrl]);
 
   // Autoplay Trigger: swipes next
@@ -138,12 +142,12 @@ export default function PicPage() {
       audioRef.current.play().catch(err => console.error("Play failed:", err));
     }
     setIsPlayingMusic(!isPlayingMusic);
-    logActivity('Music Toggle', isPlayingMusic ? 'Pause Music' : 'Play Music');
+    saveActivityLog('Music Toggle', isPlayingMusic ? 'Pause Music' : 'Play Music');
   };
 
   const toggleAutoplay = () => {
     setIsAutoplayActive(!isAutoplayActive);
-    logActivity('Autoplay Toggle', !isAutoplayActive ? 'Enable Autoplay' : 'Disable Autoplay');
+    saveActivityLog('Autoplay Toggle', !isAutoplayActive ? 'Enable Autoplay' : 'Disable Autoplay');
   };
 
   // Pull-to-refresh listener
@@ -356,12 +360,14 @@ function PolaroidStackLayout({ images, updateDateDisplay, triggerAutoSwipeRef }:
 
   useEffect(() => {
     triggerAutoSwipeRef.current = swipeNext;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [images, activeIndex]);
 
   useEffect(() => {
     if (images[activeIndex]) {
       updateDateDisplay(images[activeIndex].created_at);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex, images]);
 
   const handleStart = (clientX: number, clientY: number) => {
@@ -506,6 +512,7 @@ function FilmstripLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: Lay
 
   useEffect(() => {
     triggerAutoSwipeRef.current = swipeNext;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [images, activeIndex]);
 
   useEffect(() => {
@@ -513,6 +520,7 @@ function FilmstripLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: Lay
     if (images[activeIndex]) {
       updateDateDisplay(images[activeIndex].created_at);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex, images]);
 
   const handleStart = (clientX: number) => {
@@ -677,6 +685,7 @@ function CylinderLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: Layo
 
   useEffect(() => {
     triggerAutoSwipeRef.current = swipeNext;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [images]);
 
   useEffect(() => {
@@ -698,6 +707,7 @@ function CylinderLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: Layo
       clearInterval(interval);
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [images]);
 
   const handleStart = (clientX: number) => {
@@ -710,7 +720,6 @@ function CylinderLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: Layo
 
   const handleMove = (clientX: number) => {
     if (!isDraggingRef.current || !trackRef.current) return;
-    const deltaX = clientX - dragStartRef.current;
     
     // Smooth dragging modifier
     rotYRef.current = rotYRef.current + (clientX - lastXRef.current) * 0.25;
@@ -827,6 +836,7 @@ function CircularLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: Layo
 
   useEffect(() => {
     triggerAutoSwipeRef.current = swipeNext;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [images]);
 
   useEffect(() => {

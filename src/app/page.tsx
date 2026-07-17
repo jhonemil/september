@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabaseClient, logActivity } from '@/lib/supabase';
+import { fetchLetterMessage, saveActivityLog } from '@/app/actions';
 
 export default function HomePage() {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,44 +10,35 @@ export default function HomePage() {
 
   useEffect(() => {
     // Log visit
-    logActivity('Site Visit', 'Home Page');
+    saveActivityLog('Site Visit', 'Home Page').catch(err => {
+      console.error("[HomePage] saveActivityLog 'Site Visit' failed:", err);
+    });
 
     // Fetch the dynamic message
-    async function fetchMessage() {
+    async function getMessage() {
       try {
-        const { data, error } = await supabaseClient
-          .from('letter_content')
-          .select('message')
-          .limit(1)
-          .single();
-
-        if (error) {
-          console.error(error);
-          setMessageText("Couldn't read message. Make sure Database is set up.");
-          return;
-        }
-
-        if (data && data.message) {
-          setMessageText(data.message);
-        } else {
-          setMessageText("Couldn't read message. Make sure Database is set up.");
-        }
+        const msg = await fetchLetterMessage();
+        setMessageText(msg);
       } catch (err) {
-        console.error(err);
-        setMessageText("Failed to load message.");
+        console.error("[HomePage] Error fetching letter message:", err);
+        setMessageText("Failed to load message. Please check connection.");
       }
     }
 
-    fetchMessage();
+    getMessage();
   }, []);
 
   const handleHeartClick = () => {
-    setIsOpen(!isOpen);
-    logActivity('Heart Click', isOpen ? 'Close Letter' : 'Open Letter');
+    setIsOpen(prev => !prev);
+    saveActivityLog('Heart Click', !isOpen ? 'Open Letter' : 'Close Letter').catch(err => {
+      console.error("[HomePage] saveActivityLog 'Heart Click' failed:", err);
+    });
   };
 
   const handleButtonClick = () => {
-    logActivity('Button Click', 'Things to Remember');
+    saveActivityLog('Button Click', 'Things to Remember').catch(err => {
+      console.error("[HomePage] saveActivityLog 'Button Click' failed:", err);
+    });
   };
 
   // Heart container styles based on isOpen state
@@ -81,7 +72,7 @@ export default function HomePage() {
         style={heartContainerStyle}
       >
         <div className="heart" style={heartStyle}>
-          <svg viewBox="0 0 32 29.6" fill="#e91e63">
+          <svg viewBox="0 0 32 29.6" width="80" height="74" fill="#e91e63">
             <path d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2c6.1-9.3,16-12.1,16-21.2C32,3.8,28.2,0,23.6,0z" />
           </svg>
         </div>

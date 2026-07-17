@@ -97,6 +97,7 @@ a.btn:hover {
   overflow: hidden;
   backdrop-filter: blur(10px);
   will-change: transform, opacity;
+  pointer-events: none;
 }
 
 @media (min-width: 768px) {
@@ -109,6 +110,7 @@ a.btn:hover {
 .message.active {
   opacity: 1;
   transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
 
 h1 {
