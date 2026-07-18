@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import * as THREE from 'three';
 import { supabaseClient, subscribeToLayoutChange } from '@/lib/supabase';
 import { fetchBgMusic, fetchCarouselImages, fetchActiveLayout, saveActivityLog } from '@/app/actions';
 
@@ -15,7 +16,7 @@ interface CarouselImage {
 
 export default function PicPage() {
   const [allImages, setAllImages] = useState<CarouselImage[]>([]);
-  const [activeLayout, setActiveLayoutState] = useState<number>(3); // Default layout initially
+  const [activeLayout, setActiveLayoutState] = useState<number>(5); // Default layout initially to Three.js Globe
   const [isPlayingMusic, setIsPlayingMusic] = useState<boolean>(false);
   const [isAutoplayActive, setIsAutoplayActive] = useState<boolean>(false);
   const [musicUrl, setMusicUrl] = useState<string>('');
@@ -245,14 +246,14 @@ export default function PicPage() {
     return <FilmstripLayout images={allImages} updateDateDisplay={updateDateDisplay} triggerAutoSwipeRef={triggerAutoSwipe} />;
   };
 
-  // Render Cylinder Layout (Layout 3)
-  const renderCylinder = () => {
-    return <CylinderLayout images={allImages} updateDateDisplay={updateDateDisplay} triggerAutoSwipeRef={triggerAutoSwipe} />;
-  };
-
   // Render Circular Fallback Layout (Layout 4)
   const renderCircular = () => {
     return <CircularLayout images={allImages} updateDateDisplay={updateDateDisplay} triggerAutoSwipeRef={triggerAutoSwipe} />;
+  };
+
+  // Render Three.js Globe Layout (Layout 3 / Layout 5)
+  const renderThreeGlobe = () => {
+    return <ThreeGlobeLayout images={allImages} updateDateDisplay={updateDateDisplay} triggerAutoSwipeRef={triggerAutoSwipe} />;
   };
 
   return (
@@ -278,7 +279,7 @@ export default function PicPage() {
             : activeLayout === 2
             ? 'layout-filmstrip'
             : activeLayout === 3
-            ? 'layout-cylinder'
+            ? 'layout-three-globe'
             : 'layout-circular'
         }`}
       >
@@ -293,7 +294,7 @@ export default function PicPage() {
             <>
               {activeLayout === 1 && renderPolaroidStack()}
               {activeLayout === 2 && renderFilmstrip()}
-              {activeLayout === 3 && renderCylinder()}
+              {activeLayout === 3 && renderThreeGlobe()}
               {activeLayout !== 1 && activeLayout !== 2 && activeLayout !== 3 && renderCircular()}
             </>
           )}
@@ -315,6 +316,39 @@ export default function PicPage() {
           title="Play Music"
         >
           <span className="control-icon">🎵</span>
+        </div>
+
+        {/* Vertical Separator */}
+        <div className="control-separator"></div>
+
+        {/* Layout Selectors */}
+        <div 
+          onClick={() => setActiveLayoutState(1)} 
+          className={`control-btn ${activeLayout === 1 ? 'active-state' : ''}`} 
+          title="Polaroid Stack"
+        >
+          <span className="control-icon">🖼️</span>
+        </div>
+        <div 
+          onClick={() => setActiveLayoutState(2)} 
+          className={`control-btn ${activeLayout === 2 ? 'active-state' : ''}`} 
+          title="Filmstrip"
+        >
+          <span className="control-icon">🎞️</span>
+        </div>
+        <div 
+          onClick={() => setActiveLayoutState(3)} 
+          className={`control-btn ${activeLayout === 3 ? 'active-state' : ''}`} 
+          title="3D Tunnel Gallery"
+        >
+          <span className="control-icon">🌌</span>
+        </div>
+        <div 
+          onClick={() => setActiveLayoutState(4)} 
+          className={`control-btn ${activeLayout === 4 ? 'active-state' : ''}`} 
+          title="Circular Carousel"
+        >
+          <span className="control-icon">🎡</span>
         </div>
       </div>
 
@@ -618,207 +652,6 @@ function FilmstripLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: Lay
   );
 }
 
-// 3. Cylinder 3D Layout (Layout 3)
-function CylinderLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: LayoutProps) {
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const dragStartRef = useRef(0);
-  const isDraggingRef = useRef(false);
-  const rotYRef = useRef(0);
-  const lastXRef = useRef(0);
-  const velocityYRef = useRef(0);
-  const animationFrameRef = useRef<number | null>(null);
-  
-  // Use a selection of 16 images for the cylinder
-  const cylinderImages = images.slice(0, 16);
-  const N = cylinderImages.length || 1;
-  const cardWidth = 240;
-  const radius = Math.round((cardWidth / 2) / Math.tan(Math.PI / N));
-
-  // Determine active card based on rotation
-  const getActiveCardIdx = (rot: number) => {
-    let normalizedRot = (-rot) % 360;
-    if (normalizedRot < 0) normalizedRot += 360;
-    const anglePerCard = 360 / N;
-    return Math.round(normalizedRot / anglePerCard) % N;
-  };
-
-  const updateActiveCardClass = (rot: number) => {
-    if (!trackRef.current) return;
-    const idx = getActiveCardIdx(rot);
-    const items = trackRef.current.querySelectorAll('.carousel-item');
-    items.forEach((item, index) => {
-      if (index === idx) {
-        item.classList.add('active-card');
-        updateDateDisplay(cylinderImages[index]?.created_at);
-      } else {
-        item.classList.remove('active-card');
-      }
-    });
-  };
-
-  const swipeNext = () => {
-    const targetRotY = rotYRef.current - (360 / N);
-    
-    let startTime: number | null = null;
-    const duration = 800;
-    const startRotation = rotYRef.current;
-    
-    const step = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
-      
-      rotYRef.current = startRotation + (targetRotY - startRotation) * ease;
-      if (trackRef.current) {
-        trackRef.current.style.transform = `translate3d(-50%, -50%, -120px) rotateY(${rotYRef.current}deg)`;
-      }
-      updateActiveCardClass(rotYRef.current);
-      
-      if (progress < 1) {
-        animationFrameRef.current = requestAnimationFrame(step);
-      }
-    };
-    
-    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-    animationFrameRef.current = requestAnimationFrame(step);
-  };
-
-  useEffect(() => {
-    triggerAutoSwipeRef.current = swipeNext;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [images]);
-
-  useEffect(() => {
-    // Slow auto rotation in background
-    const interval = setInterval(() => {
-      if (!isDraggingRef.current) {
-        rotYRef.current -= 0.15;
-        if (trackRef.current) {
-          trackRef.current.style.transform = `translate3d(-50%, -50%, -120px) rotateY(${rotYRef.current}deg)`;
-        }
-        updateActiveCardClass(rotYRef.current);
-      }
-    }, 16);
-
-    // Initial setting of active card class
-    setTimeout(() => updateActiveCardClass(0), 100);
-
-    return () => {
-      clearInterval(interval);
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [images]);
-
-  const handleStart = (clientX: number) => {
-    isDraggingRef.current = true;
-    dragStartRef.current = clientX;
-    lastXRef.current = clientX;
-    velocityYRef.current = 0;
-    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-  };
-
-  const handleMove = (clientX: number) => {
-    if (!isDraggingRef.current || !trackRef.current) return;
-    
-    // Smooth dragging modifier
-    rotYRef.current = rotYRef.current + (clientX - lastXRef.current) * 0.25;
-    velocityYRef.current = clientX - lastXRef.current;
-    lastXRef.current = clientX;
-
-    trackRef.current.style.transform = `translate3d(-50%, -50%, -120px) rotateY(${rotYRef.current}deg)`;
-    updateActiveCardClass(rotYRef.current);
-  };
-
-  const handleEnd = () => {
-    if (!isDraggingRef.current || !trackRef.current) return;
-    isDraggingRef.current = false;
-
-    // Apply inertia physics
-    const physicsTick = () => {
-      if (isDraggingRef.current) return;
-      rotYRef.current += velocityYRef.current * 0.15;
-      velocityYRef.current *= 0.92;
-
-      if (trackRef.current) {
-        trackRef.current.style.transform = `translate3d(-50%, -50%, -120px) rotateY(${rotYRef.current}deg)`;
-      }
-      updateActiveCardClass(rotYRef.current);
-
-      if (Math.abs(velocityYRef.current) > 0.1) {
-        animationFrameRef.current = requestAnimationFrame(physicsTick);
-      } else {
-        // Snap to nearest card
-        const anglePerCard = 360 / N;
-        const nearestCardIdx = Math.round(rotYRef.current / anglePerCard);
-        const targetRotY = nearestCardIdx * anglePerCard;
-        
-        let snapStartTime: number | null = null;
-        const snapStartRotation = rotYRef.current;
-        const snapDuration = 400;
-
-        const snapStep = (timestamp: number) => {
-          if (isDraggingRef.current) return;
-          if (!snapStartTime) snapStartTime = timestamp;
-          const progress = Math.min((timestamp - snapStartTime) / snapDuration, 1);
-          const ease = 1 - Math.pow(1 - progress, 3);
-          
-          rotYRef.current = snapStartRotation + (targetRotY - snapStartRotation) * ease;
-          if (trackRef.current) {
-            trackRef.current.style.transform = `translate3d(-50%, -50%, -120px) rotateY(${rotYRef.current}deg)`;
-          }
-          updateActiveCardClass(rotYRef.current);
-
-          if (progress < 1) {
-            animationFrameRef.current = requestAnimationFrame(snapStep);
-          }
-        };
-        animationFrameRef.current = requestAnimationFrame(snapStep);
-      }
-    };
-    animationFrameRef.current = requestAnimationFrame(physicsTick);
-  };
-
-  return (
-    <div
-      className="cylinder-track-wrapper"
-      style={{ width: '100%', height: '100%', position: 'absolute', pointerEvents: 'auto' }}
-      onMouseDown={(e) => handleStart(e.clientX)}
-      onMouseMove={(e) => handleMove(e.clientX)}
-      onMouseUp={handleEnd}
-      onMouseLeave={handleEnd}
-      onTouchStart={(e) => handleStart(e.touches[0].clientX)}
-      onTouchMove={(e) => handleMove(e.touches[0].clientX)}
-      onTouchEnd={handleEnd}
-    >
-      <div 
-        ref={trackRef} 
-        className="cylinder-track"
-        style={{ transform: 'translate3d(-50%, -50%, -120px) rotateY(0deg)' }}
-      >
-        {cylinderImages.map((data, index) => {
-          const angle = index * (360 / N);
-          const transformString = `rotateY(${angle}deg) translateZ(${radius}px)`;
-          return (
-            <div
-              key={data.id}
-              className="carousel-item"
-              style={{
-                transform: transformString,
-                WebkitTransform: transformString,
-              }}
-            >
-              <div className="carousel-box">
-                <img src={data.image_url} alt="" />
-              </div>
-              <div className="card-caption">{data.caption || ''}</div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 // 4. Circular 3D Layout (Fallback / Layout 4)
 function CircularLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: LayoutProps) {
@@ -923,3 +756,191 @@ function CircularLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: Layo
     </div>
   );
 }
+
+// 5. Three.js 3D Infinite Ambient Photo Space Layout (Layout 5 / Globe Layout)
+function ThreeGlobeLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: LayoutProps) {
+  const mountRef = useRef<HTMLDivElement>(null);
+
+  // Pool only 10 meshes at a time to prevent performance drops, swapping textures dynamically in flight
+  const meshesCount = Math.min(images.length, 10);
+  const initialImages = images.slice(0, meshesCount);
+
+  useEffect(() => {
+    if (!mountRef.current || initialImages.length === 0) return;
+
+    const container = mountRef.current;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    // Create scene, camera, renderer
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+
+    // Exponential black fog to smoothly fade images in the distance
+    scene.fog = new THREE.FogExp2(0x000000, 0.06);
+
+    const camera = new THREE.PerspectiveCamera(65, width / height, 0.1, 100);
+    camera.position.set(0, 0, 0);
+    camera.rotation.order = 'YXZ';
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+    const dom = renderer.domElement;
+
+    // Group to hold all photo planes
+    const spaceGroup = new THREE.Group();
+    scene.add(spaceGroup);
+
+    // Load textures and create planes for each image
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.setCrossOrigin('anonymous');
+    const planeGeometry = new THREE.PlaneGeometry(1.6, 1.2); // 4:3 Aspect ratio
+
+    const meshes: THREE.Mesh[] = [];
+    let nextImageIndex = meshesCount; // Track next index to swap
+
+    initialImages.forEach((img, i) => {
+      const texture = textureLoader.load(img.image_url);
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        depthWrite: false,
+      });
+
+      const mesh = new THREE.Mesh(planeGeometry, material);
+
+      // Distribute randomly in a 3D box in front of the camera
+      const x = (Math.random() - 0.5) * 11; // Width distribution
+      const y = (Math.random() - 0.5) * 8;  // Height distribution
+      // Distribute evenly along the Z axis from -25 to 0
+      const z = -25 + (i / meshesCount) * 25;
+
+      mesh.position.set(x, y, z);
+      mesh.userData = { image: img };
+
+      spaceGroup.add(mesh);
+      meshes.push(mesh);
+    });
+
+    // Parallax Interactivity
+    const hoverOffset = { x: 0, y: 0 };
+    let currentSpeed = 0.045; // Flight speed
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Subtle hover parallax steering (not messy, just adds organic depth)
+      hoverOffset.y = -(e.clientX / window.innerWidth - 0.5) * 0.15;
+      hoverOffset.x = -(e.clientY / window.innerHeight - 0.5) * 0.12;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        hoverOffset.y = -(e.touches[0].clientX / window.innerWidth - 0.5) * 0.1;
+        hoverOffset.x = -(e.touches[0].clientY / window.innerHeight - 0.5) * 0.1;
+      }
+    };
+
+    // Attach event listeners
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+
+    // Auto-swipe trigger: speeds up flight temporarily
+    triggerAutoSwipeRef.current = () => {
+      currentSpeed = 0.12;
+      setTimeout(() => {
+        currentSpeed = 0.045;
+      }, 1000);
+    };
+
+    // Resize handler
+    const handleResize = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Render loop
+    let animationFrameId: number;
+    const animate = () => {
+      animationFrameId = requestAnimationFrame(animate);
+
+      // Smooth camera steering (centered at 0, only adds subtle hover parallax)
+      camera.rotation.y += (hoverOffset.y - camera.rotation.y) * 0.08;
+      camera.rotation.x += (hoverOffset.x - camera.rotation.x) * 0.08;
+
+      meshes.forEach((mesh) => {
+        // Move photo forward along the Z axis
+        mesh.position.z += currentSpeed;
+
+        // Infinite loop wrap: if photo passes behind camera, reset it to the background
+        if (mesh.position.z > 1.5) {
+          mesh.position.z = -25;
+          mesh.position.x = (Math.random() - 0.5) * 11;
+          mesh.position.y = (Math.random() - 0.5) * 8;
+
+          // Swap texture asynchronously to show the next image from database
+          const nextImg = images[nextImageIndex];
+          nextImageIndex = (nextImageIndex + 1) % images.length;
+
+          textureLoader.load(nextImg.image_url, (texture) => {
+            const mat = mesh.material as THREE.MeshBasicMaterial;
+            if (mat.map) mat.map.dispose(); // Free GPU memory of previous texture
+            mat.map = texture;
+            mat.needsUpdate = true;
+            mesh.userData = { image: nextImg };
+
+            // Dynamically update date display when a photo wraps around to feel interactive
+            if (nextImg.created_at) {
+              updateDateDisplay(nextImg.created_at);
+            }
+          });
+        }
+
+        // Billboarding: force mesh to face the camera directly
+        mesh.quaternion.copy(camera.quaternion);
+
+        // Dynamic scale effect: slightly larger as it gets closer
+        const zDist = Math.abs(mesh.position.z); // Distance from Z = 0
+        const scaleFactor = THREE.MathUtils.mapLinear(zDist, 0, 25, 1.25, 0.6);
+        mesh.scale.set(scaleFactor, scaleFactor, 1);
+      });
+
+      renderer.render(scene, camera);
+    };
+
+    animate();
+
+    // Clean up
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('resize', handleResize);
+      
+      if (container && dom && dom.parentNode === container) {
+        container.removeChild(dom);
+      }
+      
+      // Dispose WebGL resources
+      planeGeometry.dispose();
+      meshes.forEach(m => {
+        const mat = m.material as THREE.MeshBasicMaterial;
+        if (mat.map) mat.map.dispose();
+        mat.dispose();
+      });
+      renderer.dispose();
+    };
+  }, [initialImages, images, meshesCount, updateDateDisplay, triggerAutoSwipeRef]);
+
+  return (
+    <div className="three-globe-layout-wrapper">
+      <div ref={mountRef} className="three-globe-mount" />
+    </div>
+  );
+}
+
