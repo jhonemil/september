@@ -1,10 +1,10 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { supabaseClient, subscribeToLayoutChange } from '@/lib/supabase';
-import { fetchBgMusic, fetchCarouselImages, fetchActiveLayout, saveActivityLog } from '@/app/actions';
+import { fetchBgMusic, fetchCarouselImages, saveActivityLog } from '@/app/actions';
 
 interface CarouselImage {
   id: string | number;
@@ -16,12 +16,28 @@ interface CarouselImage {
 
 export default function PicPage() {
   const [allImages, setAllImages] = useState<CarouselImage[]>([]);
-  const [activeLayout, setActiveLayoutState] = useState<number>(5); // Default layout initially to Three.js Globe
-  const [isPlayingMusic, setIsPlayingMusic] = useState<boolean>(false);
-  const [isAutoplayActive, setIsAutoplayActive] = useState<boolean>(false);
+  const [activeLayout, setActiveLayoutState] = useState<number>(4); // Default layout initially to Circular Carousel (Layout 4)
+  const [isPlayingMusic, setIsPlayingMusic] = useState<boolean>(true);
+  const [isAutoplayActive, setIsAutoplayActive] = useState<boolean>(true);
   const [musicUrl, setMusicUrl] = useState<string>('');
   const [activeDateText, setActiveDateText] = useState<string>('');
   const [isDateVisible, setIsDateVisible] = useState<boolean>(false);
+  const [isMenuExpanded, setIsMenuExpanded] = useState<boolean>(false);
+  const [isChangingLayout, setIsChangingLayout] = useState<boolean>(false);
+
+  const changeLayout = useCallback((layoutId: number) => {
+    if (layoutId === activeLayout) return;
+    setIsChangingLayout(true);
+    setTimeout(() => {
+      setActiveLayoutState(layoutId);
+      setIsChangingLayout(false);
+    }, 600);
+  }, [activeLayout]);
+
+  const changeLayoutRef = useRef(changeLayout);
+  useEffect(() => {
+    changeLayoutRef.current = changeLayout;
+  }, [changeLayout]);
 
   // Pull-to-refresh state
   const [pullText, setPullText] = useState<string>('Pull to refresh...');
@@ -51,23 +67,48 @@ export default function PicPage() {
       console.error("Error fetching background music:", err);
     }
 
-    // Fetch Images
+    // Fetch Images (SWR with LocalStorage Cache)
+    let cachedImages: CarouselImage[] = [];
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('carousel_images_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && Array.isArray(parsed.images) && parsed.images.length > 0) {
+            cachedImages = parsed.images;
+            setAllImages(cachedImages);
+          }
+        }
+      } catch (e) {
+        console.error("Error reading from localStorage cache:", e);
+      }
+    }
+
     try {
       const imagesData = await fetchCarouselImages();
       if (imagesData && imagesData.length > 0) {
-        setAllImages(imagesData);
+        const hasChanges = JSON.stringify(imagesData) !== JSON.stringify(cachedImages);
+        if (hasChanges) {
+          setAllImages(imagesData);
+        }
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('carousel_images_cache', JSON.stringify({
+            images: imagesData,
+            updatedAt: Date.now()
+          }));
+        }
       }
     } catch (err) {
       console.error("Error fetching carousel images:", err);
     }
 
-    // Fetch active layout settings
-    try {
-      const initialLayout = await fetchActiveLayout();
-      setActiveLayoutState(initialLayout);
-    } catch (err) {
-      console.error("Error fetching active layout:", err);
-    }
+    // Fetch active layout settings (Commented out to keep Layout 4 as default on page load)
+    // try {
+    //   const initialLayout = await fetchActiveLayout();
+    //   setActiveLayoutState(initialLayout);
+    // } catch (err) {
+    //   console.error("Error fetching active layout:", err);
+    // }
   };
 
   useEffect(() => {
@@ -77,8 +118,7 @@ export default function PicPage() {
 
     // Listen to real-time database changes
     const channel = subscribeToLayoutChange((newLayoutId) => {
-      console.log("Database updated layout to:", newLayoutId);
-      setActiveLayoutState(newLayoutId);
+      changeLayoutRef.current(newLayoutId);
     });
 
     // Custom cursor trail handler
@@ -258,6 +298,13 @@ export default function PicPage() {
 
   return (
     <div className="pic-body">
+      {/* Layout Transition Loading Spinner */}
+      {isChangingLayout && (
+        <div className="layout-loading-overlay">
+          <div className="loading-spinner"></div>
+          <p className="loading-text">Changing Layout...</p>
+        </div>
+      )}
       {/* Bokeh Background */}
       <div className="bokeh-background">
         <span></span><span></span><span></span><span></span>
@@ -302,53 +349,64 @@ export default function PicPage() {
       </div>
 
       {/* Floating Controls */}
-      <div className="controls-panel">
+      <div className={`controls-container ${isMenuExpanded ? 'expanded' : ''}`}>
+        {/* Main Menu Toggle Button */}
         <div 
-          onClick={toggleAutoplay} 
-          className={`control-btn pulse ${isAutoplayActive ? 'active-state' : ''}`} 
-          title="Auto Play"
+          onClick={() => setIsMenuExpanded(!isMenuExpanded)} 
+          className={`control-btn main-menu-btn ${isMenuExpanded ? 'active-state' : ''}`}
+          title="Toggle Menu"
         >
-          <span className="control-icon">{isAutoplayActive ? '⏸️' : '▶️'}</span>
-        </div>
-        <div 
-          onClick={toggleMusic} 
-          className={`control-btn pulse ${isPlayingMusic ? 'active-state' : ''}`} 
-          title="Play Music"
-        >
-          <span className="control-icon">🎵</span>
+          <span className="control-icon">{isMenuExpanded ? '✖️' : '⚙️'}</span>
         </div>
 
-        {/* Vertical Separator */}
-        <div className="control-separator"></div>
+        {/* Horizontal Media Controls Group (Autoplay, Music) */}
+        <div className="controls-horizontal-group">
+          <div 
+            onClick={toggleAutoplay} 
+            className={`control-btn pulse ${isAutoplayActive ? 'active-state' : ''}`} 
+            title="Auto Play"
+          >
+            <span className="control-icon">{isAutoplayActive ? '⏸️' : '▶️'}</span>
+          </div>
+          <div 
+            onClick={toggleMusic} 
+            className={`control-btn pulse ${isPlayingMusic ? 'active-state' : ''}`} 
+            title="Play Music"
+          >
+            <span className="control-icon">🎵</span>
+          </div>
+        </div>
 
-        {/* Layout Selectors */}
-        <div 
-          onClick={() => setActiveLayoutState(1)} 
-          className={`control-btn ${activeLayout === 1 ? 'active-state' : ''}`} 
-          title="Polaroid Stack"
-        >
-          <span className="control-icon">🖼️</span>
-        </div>
-        <div 
-          onClick={() => setActiveLayoutState(2)} 
-          className={`control-btn ${activeLayout === 2 ? 'active-state' : ''}`} 
-          title="Filmstrip"
-        >
-          <span className="control-icon">🎞️</span>
-        </div>
-        <div 
-          onClick={() => setActiveLayoutState(3)} 
-          className={`control-btn ${activeLayout === 3 ? 'active-state' : ''}`} 
-          title="3D Tunnel Gallery"
-        >
-          <span className="control-icon">🌌</span>
-        </div>
-        <div 
-          onClick={() => setActiveLayoutState(4)} 
-          className={`control-btn ${activeLayout === 4 ? 'active-state' : ''}`} 
-          title="Circular Carousel"
-        >
-          <span className="control-icon">🎡</span>
+        {/* Vertical Layout Controls Group (1, 2, 3, 4) */}
+        <div className="controls-vertical-group">
+          <div 
+            onClick={() => changeLayout(1)} 
+            className={`control-btn ${activeLayout === 1 ? 'active-state' : ''}`} 
+            title="Polaroid Stack"
+          >
+            <span className="control-icon">🖼️</span>
+          </div>
+          <div 
+            onClick={() => changeLayout(2)} 
+            className={`control-btn ${activeLayout === 2 ? 'active-state' : ''}`} 
+            title="Filmstrip"
+          >
+            <span className="control-icon">🎞️</span>
+          </div>
+          <div 
+            onClick={() => changeLayout(3)} 
+            className={`control-btn ${activeLayout === 3 ? 'active-state' : ''}`} 
+            title="3D Tunnel Gallery"
+          >
+            <span className="control-icon">🌌</span>
+          </div>
+          <div 
+            onClick={() => changeLayout(4)} 
+            className={`control-btn ${activeLayout === 4 ? 'active-state' : ''}`} 
+            title="Circular Carousel"
+          >
+            <span className="control-icon">🎡</span>
+          </div>
         </div>
       </div>
 
@@ -538,7 +596,10 @@ function FilmstripLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: Lay
     trackRef.current.style.transform = `translate(calc(-50% + ${shiftX}px), -50%)`;
 
     setTimeout(() => {
-      if (trackRef.current) trackRef.current.style.transition = 'none';
+      if (trackRef.current) {
+        trackRef.current.style.transition = 'none';
+        trackRef.current.style.transform = 'translate(-50%, -50%)';
+      }
       setActiveIndex(prev => (prev + 1) % images.length);
       currentDragXRef.current = 0;
     }, 500);
@@ -585,7 +646,10 @@ function FilmstripLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: Lay
       const shiftX = -(cardWidth + gap);
       trackRef.current.style.transform = `translate(calc(-50% + ${shiftX}px), -50%)`;
       setTimeout(() => {
-        if (trackRef.current) trackRef.current.style.transition = 'none';
+        if (trackRef.current) {
+          trackRef.current.style.transition = 'none';
+          trackRef.current.style.transform = 'translate(-50%, -50%)';
+        }
         setActiveIndex(prev => (prev + 1) % images.length);
         currentDragXRef.current = 0;
       }, 400);
@@ -594,7 +658,10 @@ function FilmstripLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: Lay
       const shiftX = (cardWidth + gap);
       trackRef.current.style.transform = `translate(calc(-50% + ${shiftX}px), -50%)`;
       setTimeout(() => {
-        if (trackRef.current) trackRef.current.style.transition = 'none';
+        if (trackRef.current) {
+          trackRef.current.style.transition = 'none';
+          trackRef.current.style.transform = 'translate(-50%, -50%)';
+        }
         setActiveIndex(prev => ((prev - 1 + images.length) % images.length));
         currentDragXRef.current = 0;
       }, 400);
@@ -808,6 +875,7 @@ function ThreeGlobeLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: La
         side: THREE.DoubleSide,
         transparent: true,
         depthWrite: false,
+        opacity: 0, // Start transparent for smooth initial fade-in
       });
 
       const mesh = new THREE.Mesh(planeGeometry, material);
@@ -877,28 +945,42 @@ function ThreeGlobeLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: La
         // Move photo forward along the Z axis
         mesh.position.z += currentSpeed;
 
+        const mat = mesh.material as THREE.MeshBasicMaterial;
+
         // Infinite loop wrap: if photo passes behind camera, reset it to the background
         if (mesh.position.z > 1.5) {
           mesh.position.z = -25;
           mesh.position.x = (Math.random() - 0.5) * 11;
           mesh.position.y = (Math.random() - 0.5) * 8;
 
+          // Set loading state and hide immediately
+          mesh.userData.isLoading = true;
+          mat.opacity = 0;
+
           // Swap texture asynchronously to show the next image from database
           const nextImg = images[nextImageIndex];
           nextImageIndex = (nextImageIndex + 1) % images.length;
 
           textureLoader.load(nextImg.image_url, (texture) => {
-            const mat = mesh.material as THREE.MeshBasicMaterial;
             if (mat.map) mat.map.dispose(); // Free GPU memory of previous texture
             mat.map = texture;
             mat.needsUpdate = true;
-            mesh.userData = { image: nextImg };
+            mesh.userData.image = nextImg;
+            mesh.userData.isLoading = false; // Mark loading complete
 
             // Dynamically update date display when a photo wraps around to feel interactive
             if (nextImg.created_at) {
               updateDateDisplay(nextImg.created_at);
             }
           });
+        }
+
+        // Smoothly fade in/out the opacity
+        if (mesh.userData.isLoading) {
+          mat.opacity = 0;
+        } else {
+          // Lerp opacity up to 1
+          mat.opacity += (1 - mat.opacity) * 0.08;
         }
 
         // Billboarding: force mesh to face the camera directly

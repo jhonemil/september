@@ -15,8 +15,8 @@ const raleway = Raleway({
 });
 
 export const metadata: Metadata = {
-  title: "Love Letter",
-  description: "A special dynamic space filled with sweet words and layout experiences.",
+  title: "Memory Album",
+  description: "A special dynamic space filled with sweet memories, photos and layouts.",
 };
 
 export default function RootLayout({
