@@ -828,8 +828,8 @@ function CircularLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: Layo
 function ThreeGlobeLayout({ images, updateDateDisplay, triggerAutoSwipeRef }: LayoutProps) {
   const mountRef = useRef<HTMLDivElement>(null);
 
-  // Pool only 10 meshes at a time to prevent performance drops, swapping textures dynamically in flight
-  const meshesCount = Math.min(images.length, 10);
+  // Pool 25 meshes at a time to prevent performance drops while filling the space beautifully
+  const meshesCount = Math.min(images.length, 25);
   const initialImages = images.slice(0, meshesCount);
 
   useEffect(() => {
